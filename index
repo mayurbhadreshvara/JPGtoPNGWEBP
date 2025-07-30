@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JPG to PNG / WebP Converter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff;
+      color: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+    }
+    header { text-align: center; margin-bottom: 1rem; }
+    header h1 { font-size: 2rem; }
+    .upload-box {
+      border: 2px dashed #aaa;
+      border-radius: 12px;
+      padding: 30px;
+      background: #fafafa;
+      text-align: center;
+      width: 100%;
+      max-width: 600px;
+      cursor: pointer;
+      margin-bottom: 1.5rem;
+    }
+    #fileInput { display: none; }
+    .buttons-container {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 1rem 0;
+    }
+    .btn {
+      padding: 0.7rem 1.2rem;
+      font-size: 1rem;
+      border-radius: 25px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      min-width: 140px;
+    }
+    .primary { background: #000; color: #fff; }
+    .primary:hover { background: #222; }
+    .preview-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      max-width: 600px;
+      width: 100%;
+    }
+    .img-box {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      aspect-ratio: 1/1;
+    }
+    .img-box img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 16px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .img-box:hover .delete-btn {
+      display: flex;
+    }
+    footer {
+      margin-top: auto;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #888;
+      padding: 2rem 1rem 1rem;
+    }
+    footer a {
+      color: inherit;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>JPG to PNG / WebP</h1>
+    <p>Upload JPGs and convert them easily</p>
+  </header>
+
+  <label class="upload-box" for="fileInput">
+    Click or drag JPG files here to upload
+    <input type="file" id="fileInput" accept="image/jpeg" multiple />
+  </label>
+
+  <div class="preview-container" id="preview"></div>
+
+  <div class="buttons-container">
+    <button class="btn primary" id="btnPng">Convert to PNG</button>
+    <button class="btn primary" id="btnWebp">Convert to WebP</button>
+  </div>
+
+  <footer>
+    Product by <a href="https://www.instagram.com/44n4nd" target="_blank">44n4nd</a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const btnPng = document.getElementById('btnPng');
+    const btnWebp = document.getElementById('btnWebp');
+
+    let jpgFiles = [];
+
+    fileInput.addEventListener('change', (e) => {
+      const newFiles = Array.from(e.target.files).filter(file => file.type === 'image/jpeg');
+      jpgFiles = jpgFiles.concat(newFiles);
+      renderPreviews();
+    });
+
+    function renderPreviews() {
+      preview.innerHTML = '';
+      jpgFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const div = document.createElement('div');
+          div.className = 'img-box';
+
+          const img = document.createElement('img');
+          img.src = ev.target.result;
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'delete-btn';
+          delBtn.innerHTML = '×';
+          delBtn.onclick = () => {
+            jpgFiles.splice(index, 1);
+            renderPreviews();
+          };
+
+          div.appendChild(img);
+          div.appendChild(delBtn);
+          preview.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    btnPng.addEventListener('click', () => {
+      convertAndDownload('image/png', '.png');
+    });
+
+    btnWebp.addEventListener('click', () => {
+      convertAndDownload('image/webp', '.webp');
+    });
+
+    function convertAndDownload(mimeType, extension) {
+      if (!jpgFiles.length) {
+        alert('Please upload JPG files first.');
+        return;
+      }
+
+      if (jpgFiles.length === 1) {
+        const file = jpgFiles[0];
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            canvas.toBlob((blob) => {
+              const filename = file.name.replace(/\.jpe?g$/i, extension);
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = filename;
+              a.click();
+              URL.revokeObjectURL(url);
+            }, mimeType, 0.92);
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const zip = new JSZip();
+        let count = 0;
+
+        jpgFiles.forEach((file, index) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              canvas.toBlob((blob) => {
+                const filename = file.name.replace(/\.jpe?g$/i, extension);
+                zip.file(filename, blob);
+                count++;
+                if (count === jpgFiles.length) {
+                  zip.generateAsync({ type: 'blob' }).then(content => {
+                    const zipUrl = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = zipUrl;
+                    a.download = `converted_${extension.slice(1)}.zip`;
+                    a.click();
+                    URL.revokeObjectURL(zipUrl);
+                  });
+                }
+              }, mimeType, 0.92);
+            };
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+    }
+
+    // Drag & drop
+    window.addEventListener('dragover', e => {
+      e.preventDefault();
+      document.body.classList.add('dragover');
+    });
+    window.addEventListener('dragleave', e => {
+      if (e.target === document || e.target === document.body) {
+        document.body.classList.remove('dragover');
+      }
+    });
+    window.addEventListener('drop', e => {
+      e.preventDefault();
+      document.body.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change'));
+      }
+    });
+  </script>
+
+</body>
+</html>
